@@ -1,7 +1,8 @@
 # Omarchy Theme Marketplace
 
-Browse and install themes listed on the Omarchy themes website using a Walker
-and Elephant menu that feels like the built-in theme selector.
+Browse and install themes listed on the Omarchy themes website at
+`https://omarchytheme.com/` using a Walker and Elephant menu that feels like the
+built-in theme selector.
 
 Theme entries are taken from the public theme website data repository, specifically
 the JSON file used by the Omarchy themes site:

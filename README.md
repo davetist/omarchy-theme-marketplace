@@ -1,12 +1,20 @@
 # Omarchy Theme Marketplace
 
-Browse and install extra Omarchy themes from the Omarchy manual using a Walker
-and Elephant menu that feels like the built-in theme selector.
+Browse and install themes listed on the Omarchy themes website at
+`https://omarchytheme.com/` using a Walker and Elephant menu that feels like the
+built-in theme selector.
 
-The marketplace source is:
+Theme entries are taken from the public theme website data repository, specifically
+the JSON file used by the Omarchy themes site:
 
 ```text
-https://learn.omacom.io/2/the-omarchy-manual/90/extra-themes.md
+https://github.com/limehawk/omarchy-theme-website/blob/main/src/data/themes-data.json
+```
+
+At runtime the refresh command downloads the raw JSON from:
+
+```text
+https://raw.githubusercontent.com/limehawk/omarchy-theme-website/main/src/data/themes-data.json
 ```
 
 ## Demo
@@ -18,7 +26,7 @@ download it. Click it to open the smaller MP4 version.
 
 ## What It Does
 
-- Fetches the Omarchy manual extra-themes Markdown page.
+- Fetches the Omarchy theme website JSON data from `limehawk/omarchy-theme-website`.
 - Parses each theme name, GitHub repository URL, and preview image URL.
 - Caches marketplace data locally as TSV.
 - Downloads and compresses preview images into small local JPEG thumbnails.
@@ -127,7 +135,7 @@ omarchy-launch-walker -m menus:omarchyThemeMarketplace --width 800 --minheight 4
 omarchy-theme-marketplace-refresh
 ```
 
-Fetches the remote Markdown, checks whether it changed with SHA-256, updates the
+Fetches the remote JSON, checks whether it changed with SHA-256, updates the
 local TSV cache, and generates compressed preview thumbnails.
 
 ```bash
@@ -160,7 +168,7 @@ Important files:
 
 ```text
 themes.tsv
-source.md
+themes-data.json
 source.sha256
 previews/<theme-name>.jpg
 ```
@@ -174,12 +182,12 @@ theme_name<TAB>name<TAB>repo_url<TAB>image_url<TAB>preview_path
 Example:
 
 ```text
-aetheria	Aetheria	https://github.com/JJDizz1L/aetheria	https://learn.omacom.io/u/aetheria-jaDcHN.png	/home/user/.cache/omarchy/theme-marketplace/previews/aetheria.jpg
+catppuccin	Catppuccin	https://github.com/basecamp/omarchy/tree/dev/themes/catppuccin	https://raw.githubusercontent.com/basecamp/omarchy/dev/themes/catppuccin/preview.png	/home/user/.cache/omarchy/theme-marketplace/previews/catppuccin.jpg
 ```
 
 ## Preview Handling
 
-The manual images are large preview images, not small thumbnails. Downloading
+The source images are large preview images, not small thumbnails. Downloading
 them as-is produced a cache around 217 MB during testing.
 
 This project converts them locally with ImageMagick:
@@ -193,7 +201,7 @@ format: JPEG
 That reduced the preview cache to about 9 MB for 108 themes on the test system.
 
 Cold first-run refresh took about 9 seconds on the test system. Normal unchanged
-refreshes took about 0.2 seconds because only the Markdown source is checked.
+refreshes took about 0.2 seconds because only the JSON source is checked.
 
 ## Runtime Flow
 
@@ -243,6 +251,7 @@ Expected from an Omarchy system:
 
 Additional required tool:
 
+- `jq`
 - `magick` from ImageMagick
 
 ## Technical Notes
@@ -280,4 +289,4 @@ rm -f ~/.cache/omarchy/theme-marketplace/source.sha256
 omarchy-theme-marketplace
 ```
 
-If `magick` is missing, install ImageMagick with your system package manager.
+If `jq` or `magick` is missing, install jq or ImageMagick with your system package manager.

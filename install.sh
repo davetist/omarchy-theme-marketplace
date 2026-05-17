@@ -10,6 +10,9 @@ elephant_menu_dir="$HOME/.config/elephant/menus"
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "Error: required command not found: $1" >&2
+    if [[ $1 == "jq" ]]; then
+      echo "Install jq so theme website JSON data can be parsed, then run this installer again." >&2
+    fi
     if [[ $1 == "magick" ]]; then
       echo "Install ImageMagick so the magick command is available, then run this installer again." >&2
     fi
@@ -24,6 +27,7 @@ if [[ ! -d $omarchy_path ]]; then
 fi
 
 require_command curl
+require_command jq
 require_command magick
 require_command notify-send
 require_command walker

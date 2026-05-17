@@ -1,12 +1,12 @@
-# Maintainer: prettyletto <prettyletto@users.noreply.github.com>
+# Maintainer: Dave Tist <109555139+davetist@users.noreply.github.com>
 pkgname=omarchy-theme-marketplace-git
 pkgver=0.r0.g97ca8b7
 pkgrel=1
 pkgdesc="Walker and Elephant theme marketplace for Omarchy"
 arch=("any")
-url="https://github.com/prettyletto/omarchy-theme-marketplace"
+url="https://github.com/davetist/omarchy-theme-marketplace"
 license=("MIT")
-depends=("bash" "curl" "elephant" "imagemagick" "libnotify" "uwsm" "walker" "xdg-terminal-exec")
+depends=("bash" "curl" "elephant" "imagemagick" "jq" "libnotify" "uwsm" "walker" "xdg-terminal-exec")
 makedepends=("git")
 optdepends=("omarchy: required for theme installation and Omarchy command integration")
 provides=("omarchy-theme-marketplace")

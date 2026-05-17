@@ -6,18 +6,21 @@ installation off to Omarchy's existing theme install command.
 
 ## Source
 
-The first marketplace source is the Omarchy manual extra themes page:
+The marketplace source is the Omarchy theme website data:
 
 ```text
-https://learn.omacom.io/2/the-omarchy-manual/90/extra-themes.md
+https://github.com/limehawk/omarchy-theme-website/blob/main/src/data/themes-data.json
 ```
 
-The Markdown version is preferred over the HTML page because it exposes each
-theme as a simple image/link pair:
+The refresh command fetches the raw JSON file and uses `jq` to read each
+theme's display name, GitHub URL, and preview URL:
 
-```markdown
-![aetheria.png](https://learn.omacom.io/u/aetheria-jaDcHN.png)
-[Aetheria](https://github.com/JJDizz1L/aetheria)
+```json
+{
+  "name": "Catppuccin",
+  "github_url": "https://github.com/basecamp/omarchy/tree/dev/themes/catppuccin",
+  "preview_url": "https://raw.githubusercontent.com/basecamp/omarchy/dev/themes/catppuccin/preview.png"
+}
 ```
 
 ## Theme Record
@@ -26,11 +29,11 @@ Each scraped marketplace item should produce one theme record:
 
 ```json
 {
-  "name": "Aetheria",
-  "repo_url": "https://github.com/JJDizz1L/aetheria",
-  "image_url": "https://learn.omacom.io/u/aetheria-jaDcHN.png",
-  "theme_name": "aetheria",
-  "preview_path": "~/.cache/omarchy/theme-marketplace/aetheria.png",
+  "name": "Catppuccin",
+  "repo_url": "https://github.com/basecamp/omarchy/tree/dev/themes/catppuccin",
+  "image_url": "https://raw.githubusercontent.com/basecamp/omarchy/dev/themes/catppuccin/preview.png",
+  "theme_name": "catppuccin",
+  "preview_path": "~/.cache/omarchy/theme-marketplace/catppuccin.png",
   "installed": false
 }
 ```
@@ -55,9 +58,9 @@ theme_name=$(basename "$repo_url" .git | sed -E 's/^omarchy-//; s/-theme$//' | t
 Examples:
 
 ```text
-https://github.com/JJDizz1L/aetheria                  -> aetheria
-https://github.com/bjarneo/omarchy-aura-theme         -> aura
-https://github.com/tahayvr/omarchy-sunset-drive-theme -> sunset-drive
+https://github.com/basecamp/omarchy/tree/dev/themes/catppuccin -> catppuccin
+https://github.com/bjarneo/omarchy-aura-theme                  -> aura
+https://github.com/tahayvr/omarchy-sunset-drive-theme          -> sunset-drive
 ```
 
 ## Installed Detection
@@ -87,4 +90,3 @@ Theme installation should remain delegated to:
 ```bash
 omarchy-theme-install <repo-url>
 ```
-

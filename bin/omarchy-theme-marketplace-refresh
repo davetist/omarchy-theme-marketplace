@@ -12,16 +12,22 @@ if ! command -v curl >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v jq >/dev/null 2>&1; then
+  echo "jq is required to parse the theme marketplace data" >&2
+  exit 1
+fi
+
 if ! command -v magick >/dev/null 2>&1; then
   echo "ImageMagick is required to prepare marketplace previews" >&2
   exit 1
 fi
 
-SOURCE_URL="https://learn.omacom.io/2/the-omarchy-manual/90/extra-themes.md"
+SOURCE_URL="https://raw.githubusercontent.com/limehawk/omarchy-theme-website/main/src/data/themes-data.json"
+SOURCE_API_URL="https://api.github.com/repos/limehawk/omarchy-theme-website/contents/src/data/themes-data.json?ref=main"
 CACHE_DIR="$HOME/.cache/omarchy/theme-marketplace"
 PREVIEW_DIR="$CACHE_DIR/previews"
 CACHE_FILE="$CACHE_DIR/themes.tsv"
-SOURCE_FILE="$CACHE_DIR/source.md"
+SOURCE_FILE="$CACHE_DIR/themes-data.json"
 SOURCE_HASH_FILE="$CACHE_DIR/source.sha256"
 PLACEHOLDER_PREVIEW="$CACHE_DIR/fetching-preview.jpg"
 PREVIEW_MAX_SIZE="1000x1000>"
@@ -29,6 +35,8 @@ PREVIEW_QUALITY="82"
 FIRST_PREVIEW_COUNT="10"
 FIRST_PREVIEW_JOBS="4"
 PREVIEW_JOBS="8"
+SOURCE_CONNECT_TIMEOUT="10"
+SOURCE_MAX_TIME="30"
 
 notify_marketplace_error() {
   local message="$1"
@@ -38,6 +46,32 @@ notify_marketplace_error() {
   fi
 
   echo "Theme marketplace: $message" >&2
+}
+
+fetch_marketplace_source() {
+  local output_file="$1"
+  local tmp_api_response
+
+  if curl -fsSL --connect-timeout "$SOURCE_CONNECT_TIMEOUT" --max-time "$SOURCE_MAX_TIME" "$SOURCE_URL" -o "$output_file"; then
+    return 0
+  fi
+
+  tmp_api_response=$(mktemp)
+  if curl -fsSL \
+    --connect-timeout "$SOURCE_CONNECT_TIMEOUT" \
+    --max-time "$SOURCE_MAX_TIME" \
+    -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "$SOURCE_API_URL" \
+    -o "$tmp_api_response" &&
+    jq -r '.content // empty | gsub("\\n"; "") | @base64d' "$tmp_api_response" >"$output_file"; then
+    rm -f "$tmp_api_response"
+    [[ -s $output_file ]]
+    return
+  fi
+
+  rm -f "$tmp_api_response"
+  return 1
 }
 
 if [[ ${1:-} == "--preview-worker" ]]; then
@@ -68,13 +102,13 @@ if [[ ! -f $PLACEHOLDER_PREVIEW ]]; then
     "$PLACEHOLDER_PREVIEW"
 fi
 
-tmp_md=$(mktemp)
+tmp_json=$(mktemp)
 tmp_cache=$(mktemp)
 tmp_first_jobs=$(mktemp)
 tmp_rest_jobs=$(mktemp)
 
 cleanup() {
-  rm -rf "$tmp_md" "$tmp_cache" "$tmp_first_jobs" "$tmp_rest_jobs"
+  rm -rf "$tmp_json" "$tmp_cache" "$tmp_first_jobs" "$tmp_rest_jobs"
 }
 trap cleanup EXIT
 
@@ -111,12 +145,12 @@ queue_preview_jobs() {
   done <"$cache_file"
 }
 
-if ! curl -fsSL "$SOURCE_URL" -o "$tmp_md"; then
+if ! fetch_marketplace_source "$tmp_json"; then
   notify_marketplace_error "Could not fetch the marketplace source."
   exit 1
 fi
 
-new_hash=$(sha256sum "$tmp_md" | cut -d' ' -f1)
+new_hash=$(sha256sum "$tmp_json" | cut -d' ' -f1)
 old_hash=$(cat "$SOURCE_HASH_FILE" 2>/dev/null || true)
 
 if [[ $new_hash == "$old_hash" && -f $CACHE_FILE ]]; then
@@ -126,40 +160,34 @@ if [[ $new_hash == "$old_hash" && -f $CACHE_FILE ]]; then
   exit 0
 fi
 
-image_url=""
-image_re='!\[[^]]*\]\(([^)]+)\)'
-repo_re='^[[:space:]]*\[([^]]+)\]\((https://github.com/[^)]+)\)'
+if ! jq -r --arg preview_dir "$PREVIEW_DIR" '
+  def clean_repo:
+    sub("/+$"; "");
 
-while IFS= read -r line; do
-  if [[ $line =~ $image_re ]]; then
-    image_url="${BASH_REMATCH[1]}"
+  def theme_name_from_repo:
+    clean_repo
+    | split("/")[-1]
+    | sub("\\.git$"; "")
+    | sub("^omarchy-"; "")
+    | sub("-theme$"; "")
+    | ascii_downcase;
 
-    if [[ $image_url == /* ]]; then
-      image_url="https://learn.omacom.io$image_url"
-    fi
-  elif [[ -n $image_url && $line =~ $repo_re ]]; then
-    name="${BASH_REMATCH[1]}"
-    repo_url="${BASH_REMATCH[2]}"
-
-    if [[ -z $name || -z $repo_url ]]; then
-      image_url=""
-      continue
-    fi
-
-    repo_path="${repo_url%/}"
-    theme_name=$(basename "$repo_path" .git | sed -E 's/^omarchy-//; s/-theme$//' | tr '[:upper:]' '[:lower:]')
-
-    if [[ -z $theme_name ]]; then
-      image_url=""
-      continue
-    fi
-
-    preview_path="$PREVIEW_DIR/$theme_name.jpg"
-    printf '%s\t%s\t%s\t%s\t%s\n' "$theme_name" "$name" "$repo_url" "$image_url" "$preview_path" >>"$tmp_cache"
-
-    image_url=""
-  fi
-done <"$tmp_md"
+  .[]
+  | {
+      id: ((.id // .slug) // ""),
+      name: (.name // ""),
+      repo_url: ((.canonical_github_url // .github_url) // ""),
+      image_url: (.preview_url // "")
+    }
+  | .theme_name = (.repo_url | theme_name_from_repo)
+  | .preview_id = ((if .id == "" then .theme_name else .id end) | ascii_downcase | gsub("[^a-z0-9._-]"; "-"))
+  | select(.theme_name != "" and .name != "" and .repo_url != "" and .image_url != "")
+  | [.theme_name, .name, .repo_url, .image_url, ($preview_dir + "/" + .preview_id + ".jpg")]
+  | @tsv
+' "$tmp_json" >"$tmp_cache"; then
+  notify_marketplace_error "Could not parse the marketplace source."
+  exit 1
+fi
 
 parsed_count=$(wc -l <"$tmp_cache")
 
@@ -168,7 +196,7 @@ if ((parsed_count < 10)); then
   exit 1
 fi
 
-cp "$tmp_md" "$SOURCE_FILE"
+cp "$tmp_json" "$SOURCE_FILE"
 printf '%s\n' "$new_hash" >"$SOURCE_HASH_FILE"
 mv "$tmp_cache" "$CACHE_FILE"
 

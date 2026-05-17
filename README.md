@@ -1,12 +1,19 @@
 # Omarchy Theme Marketplace
 
-Browse and install Omarchy themes from the Omarchy theme website data using a Walker
+Browse and install themes listed on the Omarchy themes website using a Walker
 and Elephant menu that feels like the built-in theme selector.
 
-The marketplace source is:
+Theme entries are taken from the public theme website data repository, specifically
+the JSON file used by the Omarchy themes site:
 
 ```text
 https://github.com/limehawk/omarchy-theme-website/blob/main/src/data/themes-data.json
+```
+
+At runtime the refresh command downloads the raw JSON from:
+
+```text
+https://raw.githubusercontent.com/limehawk/omarchy-theme-website/main/src/data/themes-data.json
 ```
 
 ## Demo
@@ -18,7 +25,7 @@ download it. Click it to open the smaller MP4 version.
 
 ## What It Does
 
-- Fetches the Omarchy theme website JSON data.
+- Fetches the Omarchy theme website JSON data from `limehawk/omarchy-theme-website`.
 - Parses each theme name, GitHub repository URL, and preview image URL.
 - Caches marketplace data locally as TSV.
 - Downloads and compresses preview images into small local JPEG thumbnails.
